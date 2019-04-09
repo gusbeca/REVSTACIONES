@@ -83,7 +83,7 @@ def hydrasq(estacion):
 #----TEST DE LA FUNCION-----------------------
 
 
-#BORRAR=hydrasq('0021205012')
+#BORRAR=hydrasq('0035027002')
 #print(BORRAR.shape)
 #print(max(BORRAR['event_time']))
 
@@ -296,26 +296,32 @@ def SensorQuery(estacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, serv
                 #print(estacion, ' :', 'FECHA_HORA_INI: ', FECHA_HORA_INI, sensorH, ' registros: ', df2.shape[0])
                 if qh[0] < 1:
                     q = """select * 
-                                         from cassandra.raw.last_observations 
-                                         where station = '%s' and sensor ='%s' and
-                                         event_value IS NOT NULL and 
-                                         format_datetime(event_time, 'yyyy-MM-dd HH:mm:ss') 
-                                         BETWEEN '%s' AND '2050-11-07 01:00:00'
-                                         ORDER BY event_time DESC
-                       """ % (estacion, sensorH, FECHA_HORA_INI)
+                                             from cassandra.raw.last_observations 
+                                             where station = '%s' and sensor ='%s' and
+                                             event_value IS NOT NULL and 
+                                             format_datetime(event_time, 'yyyy-MM-dd HH:mm:ss') 
+                                             BETWEEN '%s' AND '2050-11-07 01:00:00'
+                                             ORDER BY event_time DESC
+                           """ % (estacion, sensorH, FECHA_HORA_INI)
                     hydras.execute(q)
                     df2 = DataFrame(hydras.fetchall())
                     qh = df2.shape
 
                 if qh[0] > 0:
-                    df2.columns = ["station", "sensor", "event_time", "event_value"]
+                    
+                    q= """SHOW COLUMNS FROM cassandra.raw.last_month_observations  """
+                    hydras.execute(q)
+                    dfhead= DataFrame(hydras.fetchall())
+                    df2.columns = list(dfhead.iloc[:, 0])
+                    df2 = df2[["station", "sensor", "event_time", "event_value"]]
                     df2['event_time'] = pd.to_datetime(df2['event_time'],
-                                                       infer_datetime_format=True)  # ,format='%d%b%Y:%H:%M:%S.%f'
+                                                           infer_datetime_format=True)  # ,format='%d%b%Y:%H:%M:%S.%f'
                     df2.event_value.astype('float64')
                     df2.drop_duplicates(subset='event_time', keep='first', inplace=False)
                     df2['event_time'] = df2['event_time'] + timedelta(
-                        hours=5)  # En cassandra esta la hora meridiano, se pasa a horalocal.
+                            hours=5)  # En cassandra esta la hora meridiano, se pasa a horalocal.
                     df2.set_index('event_time')
+                    
             except:
                 df2 = DataFrame()
         else: #Servidor Scada
@@ -352,11 +358,11 @@ def SensorQuery(estacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, serv
 
     return df2
 #---PREUEBA DE LA FUNCION----
-#estacion ='0021205012'
-#ID_STZ_SCADA= 228
+#estacion ='0012015110'
+#ID_STZ_SCADA= -1
 #sensorH= '9000'
 #sensorS= 8
-#days_to_subtract= 28
+#days_to_subtract= 1
 #servidor='HYDRAS'
 
 #print("NO SE")
@@ -367,6 +373,7 @@ def SensorQuery(estacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, serv
 # de los utimos 30 dias.
 
 def BatCheck(df2):
+    #print(df2.shape)
     df2['DailyMin'] = df2.event_value.rolling(24, min_periods=14).min()
     BatMin = round(df2.DailyMin.mean(), 1)  # Valor minimo promedio de los ultimos 28 dias
     dfa = df2.dropna(axis=0, how='any')
@@ -374,13 +381,17 @@ def BatCheck(df2):
     y1 = dfa.DailyMin.values
     s = x1.shape
     length = s[0]
-    x = x1.reshape(length, 1)
-    y = y1.reshape(length, 1)
-    regr = linear_model.LinearRegression()
-    regr.fit(x, y)
-    b = regr.intercept_
-    m = regr.coef_  # Tendiencia mensual de la bateria si pendiente < a -(BatMin-10.9)/4320 => Alarma de descarga
-    if BatMin < 11.7:  # El criterio del humbral se debe ajustar
+    print(length )
+    if length >3:
+        x = x1.reshape(length, 1)
+        y = y1.reshape(length, 1)
+        regr = linear_model.LinearRegression()
+        regr.fit(x, y)
+        b = regr.intercept_
+        m = regr.coef_  # Tendiencia mensual de la bateria si pendiente < a -(BatMin-10.9)/4320 => Alarma de descarga
+    else:
+        m=0
+    if BatMin < 11.9:  # El criterio del humbral se debe ajustar
         r = ["BATERIA_BAJA", BatMin]
     elif m < -(BatMin - 10.9) / 4320:
         print(m,-(BatMin - 10.9) / 4320, BatMin)
@@ -396,22 +407,31 @@ def BatStatus(CodEstacion, ID_STZ_SCADA, LAST_DATE, servidor):
     sensorS = 8
     days_to_subtract = datetime.now() - LAST_DATE
     days_to_subtract = days_to_subtract.days + ventanaObs
-
-    try:
+    print(days_to_subtract)
+    #try:
+    df2 = SensorQuery(CodEstacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, servidor)
+    qh = df2.shape
+    #print(df2.head())
+        
+    if qh[0] > 0:
+        r = BatCheck(df2)
+    else:
+        sensorH = '9007'
         df2 = SensorQuery(CodEstacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, servidor)
         qh = df2.shape
         if qh[0] > 0:
             r = BatCheck(df2)
         else:
             r = ["DESCONOCIDO", np.nan]
-    except:
-        r = ["DESCONOCIDO", np.nan]
+    #except:
+    #    r = ["DESCONOCIDO", np.nan]
 
     return r
 
 #-- PRUEBA DE LA FUNCION----
-
-#print(BatStatus('0026057030', -1,datetime.now(),'HYDRAS'))
+#date=datetime.now()# - timedelta(5) - timedelta(days=65)
+#print(date)
+#print(BatStatus('0012015110', -1,date,'HYDRAS'))
 #----------------------------------------------------------------------------------------------------------------------
 #-----REVISION ESTADO DE PLUVIOMETRO----
 def PluvioStatus(df,**kwargs):

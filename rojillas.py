@@ -382,7 +382,8 @@ def BatCheck(df2):
     m = regr.coef_  # Tendiencia mensual de la bateria si pendiente < a -(BatMin-10.9)/4320 => Alarma de descarga
     if BatMin < 11.7:  # El criterio del humbral se debe ajustar
         r = ["BATERIA_BAJA", BatMin]
-    elif m < -(BatMin - 11) / 4000:
+    elif m < -(BatMin - 10.9) / 4320:
+        print(m,-(BatMin - 10.9) / 4320, BatMin)
         r = ["FALLA:EN_CARGA", BatMin]
     else:
         r = ["OK", BatMin]

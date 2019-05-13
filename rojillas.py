@@ -45,7 +45,7 @@ def hydrasq(estacion):
     try:
 
         q = """select * 
-                         from cassandra.raw.last_month_observations 
+                         from cassandra.raw.last_observations 
                          where station = '%s' and 
                          event_value IS NOT NULL AND  regexp_like(sensor, '\d+')
                          ORDER BY event_time DESC
@@ -53,22 +53,10 @@ def hydrasq(estacion):
 
         hydras.execute(q)
         df2 = DataFrame(hydras.fetchall())
-        q= """SHOW COLUMNS FROM cassandra.raw.last_month_observations  """
+        q= """SHOW COLUMNS FROM cassandra.raw.last_observations  """
         hydras.execute(q)
         dfhead= DataFrame(hydras.fetchall())
-        if df2.shape[0] < 1:
-            q = """select * 
-                     from cassandra.raw.last_observations 
-                     where station = '%s' and
-                     event_value IS NOT NULL AND  regexp_like(sensor, '\d+')
-                     ORDER BY event_time DESC
-                   """ % estacion
-
-            hydras.execute(q)
-            df2 = DataFrame(hydras.fetchall())
-            q= """SHOW COLUMNS FROM cassandra.raw.last_month_observations  """
-            hydras.execute(q)
-            dfhead= DataFrame(hydras.fetchall())
+       
             
         df2.columns = list(dfhead.iloc[:, 0])
         df2=df2[["station", "sensor", "event_time", "event_value"]]
@@ -97,7 +85,7 @@ def polarisq(ID_STZ_SCADA):
     df2 = DataFrame()
     q = """select id_stz, id_measure, date_record, val_data from data_radio.archive_data 
           where id_stz = %s and val_data IS NOT NULL
-          ORDER BY date_record DESC limit 500""" % ID_STZ_SCADA  # Se limita a 30 pra reducir tiempos
+          ORDER BY date_record DESC limit 30""" % ID_STZ_SCADA  # Se limita a 30 pra reducir tiempos
 
     consulta= bibi.scadaQuery(q)
     df2 = consulta[1]

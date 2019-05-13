@@ -1,0 +1,16 @@
+SELECT measures.id_measure,measures.id_stz,measures.short_name, stations.station_name, stations.id_customer, stations.state,
+CASE WHEN m_fuser.FUSER = 'FUSER' THEN FUSER WHEN m_fuser.FUSER ='OK' THEN 'OK' WHEN m_fuser.FUSER = NULL THEN 'FUSER'
+ELSE 'FUSER'
+END AS m_FUSER
+FROM configuration.measures 
+INNER JOIN configuration.stations ON measures.id_stz=stations.id_stz
+LEFT JOIN 
+(SELECT measures.id_measure,measures.id_stz,
+ CASE WHEN EXTRACT(DAY FROM MAX(data.date_record) - (now() - interval '1 day')) <0 THEN 'FUSER'
+ ELSE 'OK'
+ END AS FUSER
+       
+FROM configuration.measures 
+INNER JOIN configuration.stations ON measures.id_stz=stations.id_stz
+INNER JOIN data_radio.recent_data AS data ON measures.id_stz=data.id_stz and measures.id_measure=data.id_measure
+GROUP BY measures.id_measure,measures.id_stz) AS m_fuser ON  m_fuser.id_measure= measures.id_measure and m_fuser.id_stz= measures.id_stz

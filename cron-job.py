@@ -54,7 +54,7 @@ df = df[df.TIPO != 'AUS']
 a = df.shape
 print(a)
 inicio=0
-fin= 23#a[0]
+fin= a[0]
 df=df.iloc[inicio:fin] #Para particionar el dataframe
 a = df.shape
 

@@ -121,17 +121,16 @@ def polarisq(ID_STZ_SCADA):
 def StateQuery(**kwargs):
     estacion = kwargs['codigo_catalogo']
     ID_STZ_SCADA = kwargs['IDSCADA']
-    #print(ID_STZ_SCADA)
+   
     pase = 0
     x = [-1, -1, [], 'DESCONOCIDO']
 
     dfp = polarisq(ID_STZ_SCADA)
 
     qh = dfp.shape
-    #print(qh)
     if qh[0] > 0:
         LAST_DATEp = max(dfp['event_time'])
-        # print(LAST_DATEp)
+        
         if LAST_DATEp >= datetime.now() - timedelta(days=1.1): # Si el ultimo dato en scada tiene menos de 1.1 dias de antiguedad pasa sino mira hydras
             x[0] = 'SCADA'
             df2 = dfp
@@ -140,10 +139,11 @@ def StateQuery(**kwargs):
     else:
         pase = 2
         LAST_DATEh = datetime.strptime('1900-01-01 00:00:00', "%Y-%m-%d %H:%M:%S")
-        #print(pase)
+
     if pase != 0:
         dfh = hydrasq(estacion)
         qh = dfh.shape
+        print('shape hydras',qh)
         if qh[0] > 0 and pase == 1:
             LAST_DATEh = max(dfh['event_time'])
             if LAST_DATEp >= LAST_DATEh:
@@ -160,10 +160,8 @@ def StateQuery(**kwargs):
         if x[0] == 'SCADA':
             x[1] = max(df2['event_time'])
             q = """select distinct id_measure
-                  from data_radio.archive_data 
-                  where id_stz = %s and val_data IS NOT NULL
-                  and date_record >= (date_trunc('hour', current_date - interval '300 day'))
-                  limit 300""" % ID_STZ_SCADA  # Se limita a 30 pra reducir tiempos
+                  from configuration.measures
+                  where id_stz = %s """ % ID_STZ_SCADA  
             consulta=bibi.scadaQuery(q)
             dfS = consulta[1]
             qs = dfS.shape
@@ -183,12 +181,14 @@ def StateQuery(**kwargs):
 
     if x[1] >= datetime.now() - timedelta(1):  # Nuero de dias para considerar una estacion off liene
         x[3] = 'ON_LINE'
+    elif x[0]==-1 and ID_STZ_SCADA != -1:
+        x[3] = 'DESCONOCIDO'
     else:
         x[3] = 'OFF_LINE'
     return x
 
 #-----TEST DE LA FUNCION-------------------
-#s={'codigo_catalogo':'0021205012', 'IDSCADA':-1}#1607
+#s={'codigo_catalogo':'0035027001', 'IDSCADA':-1}
 #print((StateQuery(**s)))
 #-----------------------------------------------------------------------------------------------------------------------
 # Funcion para consultar estado DCP en http://www.sutronwin.com/dcpmon/------------------------------------------

@@ -92,7 +92,7 @@ def revisarRed(inicio, fin, df):
                 df.iloc[i, df.columns.get_loc('LAST_DATE')] = x[1]
                 df.iloc[i, df.columns.get_loc('ON_LINE')] = x[3]
 
-                print('CODIGO_CAT: ',str(df.iloc[i]['CODIGO_CAT']), ' LAST_DATE: ', x[1], ' ON_LINE: ', x[3],' SERVIDOR: ', x[0])
+                #print('CODIGO_CAT: ',str(df.iloc[i]['CODIGO_CAT']), ' LAST_DATE: ', x[1], ' ON_LINE: ', x[3],' SERVIDOR: ', x[0])
 
                 parametrosE['servidor'] = x[0]
                 parametrosE['mediciones'] = x[2]  # Lista con las mediciones de la estacion
@@ -115,7 +115,7 @@ def revisarRed(inicio, fin, df):
 
                     # ---------------------------Revision Nivel--------------------------------------------------------------------------------
                     # Si es hydrologica tiene que revisar nivel
-                    codigos = [7, '0230', '0407']
+                    codigos = [7, 229,'0230', '0407','0233']
                     if (df.iloc[i]['CLASE'] == 'HID' or df.iloc[i]['CLASE'] == 'HMT') and (df.iloc[i]['CATEG']== 'LG' or df.iloc[i]['CATEG']== 'LM' or df.iloc[i]['CATEG']== 'MM'):
                         if any({*codigos} & {*parametrosE['mediciones']}):
                             pass
@@ -129,7 +129,8 @@ def revisarRed(inicio, fin, df):
                             
                             try:
                                 parametrosE['mediciones'].append(7)
-                                parametrosE['mediciones'].append('0240')
+                                parametrosE['mediciones'].append('0233')
+                                parametrosE['mediciones'].append('0407')
                             except:
                                 pass
                             

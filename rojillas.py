@@ -115,8 +115,9 @@ def StateQuery(**kwargs):
 
     dfp = polarisq(ID_STZ_SCADA)
 
-    qh = dfp.shape
-    if qh[0] > 0:
+    qp = dfp.shape
+
+    if qp[0] > 0:
         LAST_DATEp = max(dfp['event_time'])
         
         if LAST_DATEp >= datetime.now() - timedelta(days=1.1): # Si el ultimo dato en scada tiene menos de 1.1 dias de antiguedad pasa sino mira hydras
@@ -131,7 +132,7 @@ def StateQuery(**kwargs):
     if pase != 0:
         dfh = hydrasq(estacion)
         qh = dfh.shape
-        print('shape hydras',qh)
+
         if qh[0] > 0 and pase == 1:
             LAST_DATEh = max(dfh['event_time'])
             if LAST_DATEp >= LAST_DATEh:
@@ -143,7 +144,10 @@ def StateQuery(**kwargs):
         elif qh[0] > 0 and pase == 2:
             x[0] = 'HYDRAS'
             df2 = dfh
-
+        elif qp[0]>qh[0] :
+            x[0] = 'SCADA'
+            df2 = dfp
+    
     try:
         if x[0] == 'SCADA':
             x[1] = max(df2['event_time'])
@@ -176,7 +180,7 @@ def StateQuery(**kwargs):
     return x
 
 #-----TEST DE LA FUNCION-------------------
-#s={'codigo_catalogo':'0035027001', 'IDSCADA':-1}
+#s={'codigo_catalogo':'0011115020', 'IDSCADA':35}
 #print((StateQuery(**s)))
 #-----------------------------------------------------------------------------------------------------------------------
 # Funcion para consultar estado DCP en http://www.sutronwin.com/dcpmon/------------------------------------------
@@ -369,7 +373,7 @@ def BatCheck(df2):
     y1 = dfa.DailyMin.values
     s = x1.shape
     length = s[0]
-    print(length )
+    #print(length )
     if length >3:
         x = x1.reshape(length, 1)
         y = y1.reshape(length, 1)
@@ -382,7 +386,7 @@ def BatCheck(df2):
     if BatMin < 11.9:  # El criterio del humbral se debe ajustar
         r = ["BATERIA_BAJA", BatMin]
     elif m < -(BatMin - 10.9) / 4320:
-        print(m,-(BatMin - 10.9) / 4320, BatMin)
+        #print(m,-(BatMin - 10.9) / 4320, BatMin)
         r = ["FALLA:EN_CARGA", BatMin]
     else:
         r = ["OK", BatMin]
@@ -395,7 +399,7 @@ def BatStatus(CodEstacion, ID_STZ_SCADA, LAST_DATE, servidor):
     sensorS = 8
     days_to_subtract = datetime.now() - LAST_DATE
     days_to_subtract = days_to_subtract.days + ventanaObs
-    print(days_to_subtract)
+    #print(days_to_subtract)
     #try:
     df2 = SensorQuery(CodEstacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, servidor)
     qh = df2.shape
@@ -567,7 +571,7 @@ def LevelStatus(df,**kwargs):
 
     x = ['DESCONOCIDO', np.nan, np.nan]
     s1 = ('0230', 7)  # Nivel Intantaneo rios, lagos, lagunas, quebradas..
-    s2 = ('0233', -1)  # Nivel del mar 407
+    s2 = ('0233', 229)  # Nivel del mar 407
     s3 = ('0407', -1)  # Nivel del mar 407
     periodo = 60  # Periodo de medicion en minutos
     # Busqueda del ID de vecino en scada
@@ -587,7 +591,7 @@ def LevelStatus(df,**kwargs):
     days_to_subtract = days_to_subtract.days + 2
 
     df3 = SensorQuery(codigo_catalogo, IDSCADA, s1[0], s1[1], days_to_subtract, servidor)
-    #print(df3.head(5))
+
     if df3.shape[0] > 0:
         if max(df3['event_time']) < LAST_DATE - timedelta(days=1):
             x[0] = "FUSER"
@@ -596,11 +600,11 @@ def LevelStatus(df,**kwargs):
             x[0] = "OK"
 
         s = 0
-        # x[1]=df3['event_value'][0]
+
     else:
-        # days_to_subtract=1
+
         df3 = SensorQuery(codigo_catalogo, IDSCADA, s2[0], s2[1], days_to_subtract, servidor)
-        #print(df3.head(5))
+
         if df3.shape[0] > 0:
             if max(df3['event_time']) < LAST_DATE - timedelta(days=4):
                 x[0] = "FUSER"
@@ -613,7 +617,7 @@ def LevelStatus(df,**kwargs):
 
         else:
             df3 = SensorQuery(codigo_catalogo, IDSCADA, s3[0], s3[1], days_to_subtract, servidor)
-            #print(df3.head(5))
+
             if df3.shape[0] > 0:
                 if max(df3['event_time']) < LAST_DATE - timedelta(days=4):
                     x[0] = "FUSER"
@@ -624,6 +628,7 @@ def LevelStatus(df,**kwargs):
                     # x[1]=df3['event_value'][0]
                 s = 2
             else:
+                
                 x[0] = "FUSER"
 
     days_to_subtract = datetime.now() - LAST_DATE
@@ -650,7 +655,8 @@ def LevelStatus(df,**kwargs):
         
     else:
         dispo_dato=0
-        x[0] = "DESCONOCIDO"
+        x[0] = "FUSER"
+
     # Evaluacion de Inermitencia-------------------------------------------------------------------------------
 
     if df3.shape[0] > 0:
@@ -666,7 +672,7 @@ def LevelStatus(df,**kwargs):
         dispo_dato=(1-(intermitencia/(acount+intermitencia+0.000001)))*100 
         if x[0] != "FUSER" and intermitencia > acount*0.016:
             x[0] = "INTERMITENTE"       
-
+    
     if x[0] != "FUSER" and df3.shape[0] > 0:
         
         x[1] = round(df3['event_value'].mean(), 1)
@@ -761,20 +767,33 @@ def LevelStatus(df,**kwargs):
                     else:
                         x[2] = 999
                         
-        x[0] = x[0] +" DISPO "+"{:.2f}".format(dispo_dato)+"%"
-        return x
+    x[0] = x[0] +" DISPO "+"{:.2f}".format(dispo_dato)+"%"
+    return x
 
 #--- PREUAB DE LA FUNCION-----
-#kwargs={}
-#codigo_catalogo = kwargs['codigo_catalogo']= '0021097070'
-#IDSCADA = kwargs['IDSCADA'] = -1
-#LAST_DATE = kwargs['LAST_DATE'] = datetime.strptime('2018-12-20 12:00:00', "%Y-%m-%d %H:%M:%S")
-#VECINO_CORREINTE = kwargs['VECINO_CORREINTE'] =21
-#D_VECINO_CORRIENTE = kwargs['D_VECINO_CORRIENTE']=21
-#ALTITUD = kwargs['ALTITUD']=100
-#servidor = kwargs['servidor']='HYDRAS'
-#x=LevelStatus(**kwargs)
-#print(x)
+def testLevelStatus():
+    #Caso1 
+    kwargs={}
+    codigo_catalogo = kwargs['codigo_catalogo']= '0026127040'
+    IDSCADA = kwargs['IDSCADA'] = 1109
+    LAST_DATE = kwargs['LAST_DATE'] = datetime.strptime('2019-05-07 08:00:00', "%Y-%m-%d %H:%M:%S")
+    VECINO_CORREINTE = kwargs['VECINO_CORREINTE'] =21
+    D_VECINO_CORRIENTE = kwargs['D_VECINO_CORRIENTE']=21
+    ALTITUD = kwargs['ALTITUD']=100
+    servidor = kwargs['servidor']='HYDRAS'
+    x=LevelStatus(**kwargs)
+    print('caso1 ',x)
+    #Caso2
+    codigo_catalogo = kwargs['codigo_catalogo']= '0011159010'
+    IDSCADA = kwargs['IDSCADA'] = -1
+    LAST_DATE = kwargs['LAST_DATE'] = datetime.strptime('2019-05-16 02:50:00', "%Y-%m-%d %H:%M:%S")
+    VECINO_CORREINTE = kwargs['VECINO_CORREINTE'] =21
+    D_VECINO_CORRIENTE = kwargs['D_VECINO_CORRIENTE']=21
+    ALTITUD = kwargs['ALTITUD']=100
+    servidor = kwargs['servidor']='HYDRAS'
+    x=LevelStatus(**kwargs)
+    print('caso2 ',x)
+#testLevelStatus()
 #-----------------------------------------------------------------------------------------------------------------------
 #--FUNCION PARA REVISAR SENSORES EN GENERAL-------------------------------
 def sensorStatus(df,**parametros):

@@ -35,21 +35,21 @@ def scadaQuery(q):
 
 def scadaQ(q):
     a=['Error',DataFrame()]
-    for i in range(0, 2):
+    for i in range(0, 1):
         a=scadaQuery(q)
         if a[0] == 'OK':
             break
         else:
-            time.sleep(1)
+            time.sleep(0.5)
             
     if a[0] == 'Error':
-        time.sleep(10)
+        time.sleep(5)
         for i in range(0, 1):
             a=scadaQuery(q)
             if a[0] == 'OK':
                 break
             else:
-                time.sleep(2)
+                time.sleep(1)
     
     return a
 

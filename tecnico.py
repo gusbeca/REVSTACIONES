@@ -102,7 +102,7 @@ def revisarRed(inicio, fin, df):
                     
                     # --------------------------Verificacion GOES------------------------------------------------------------------------------
 
-                    if parametrosE['DCP_Address'] != -1:
+                    if parametrosE['DCP_Address'] != '-1' and parametrosE['DCP_Address'] != '' and parametrosE['DCP_Address'] != ' ':
                         x = rojillas.dcpmon(**parametrosE)
                         df.iloc[i, df.columns.get_loc('NOAA_INMARSAT')] = x[0]
                         df.iloc[i, df.columns.get_loc('GananciaAntena')] = x[1]

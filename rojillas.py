@@ -186,77 +186,79 @@ def StateQuery(**kwargs):
 # Funcion para consultar estado DCP en http://www.sutronwin.com/dcpmon/------------------------------------------
 
 def dcpmon(**kwargs):
+
     dcpaddress = kwargs['DCP_Address']
-    http = urllib3.PoolManager()  # Instanciamiento de objeto urlib para consulta web
-    url = "http://www.sutronwin.com/dcpmon/dcpout.jsp"  # Direccio web para consultas
-    try:
-        r = http.request('GET', url,
-                         fields={'group_select': 'Southern-California-Edison', 'channel_select': 'Channel_1',
-                                 'select_option': 'dcp_text', 'dcp_text': dcpaddress, 'date_range': '5',
-                                 'get_report': 'Get+Report'})  # fields={'dcp_text': 'CB0121EE'}
+    if dcpaddress != '-1' or dcpaddress != '':
+        http = urllib3.PoolManager()  # Instanciamiento de objeto urlib para consulta web
+        url = "http://www.sutronwin.com/dcpmon/dcpout.jsp"  # Direccio web para consultas
+        try:
+            r = http.request('GET', url,
+                             fields={'group_select': 'Southern-California-Edison', 'channel_select': 'Channel_1',
+                                     'select_option': 'dcp_text', 'dcp_text': dcpaddress, 'date_range': '5',
+                                     'get_report': 'Get+Report'})  # fields={'dcp_text': 'CB0121EE'}
 
-        soup = BeautifulSoup(r.data, 'html.parser')  # Parser de pagina web para extraer datos
-        qn = len(soup.find_all('tr', class_="full_perf_report"))
+            soup = BeautifulSoup(r.data, 'html.parser')  # Parser de pagina web para extraer datos
+            qn = len(soup.find_all('tr', class_="full_perf_report"))
 
-        if qn == 0:
-            return ['DESCONOCIDO', -1]  # Si la tabla de estatus no contiene filas retorna error
+            if qn == 0:
+                return ['DESCONOCIDO', -1]  # Si la tabla de estatus no contiene filas retorna error
 
-        else:
-            est = soup.find_all('tr', class_="full_perf_report")[0].find_all('td')[6].text  # Estado de tX G=Good
-            senal = int(soup.find_all('tr', class_="full_perf_report")[0].find_all('td')[7].text)  # Nivel de Señal dB
-
-            # Verificar Intermitencia en transmision
-
-            lista = soup.find_all('tr', class_="full_perf_report")
-            i = 0
-            c = []
-            e = []
-            intermitencia = 0
-            for tr in lista:
-                a = str(tr.find_all('td')[6].text).replace(' ', '')[0]
-                if i > 0:
-                    if b == a:
-                        pass
-                    else:
-                        intermitencia = intermitencia + 1
-
-                b = a
-                i = i + 1
-                x = int(tr.find_all('td')[7].text)
-                if x > 0:
-                    c.append(x)
-                e.append(x)
-                # -----------------------------------
-                # Evaluando si la intensidad de la señal esta decreciendo
-
-            x1 = pd.DataFrame({'x': list(range(0, len(c)))})
-            y1 = pd.DataFrame({'y': c})
-            x1 = x1.values
-            y1 = y1.values
-            s = x1.shape
-            length = s[0]
-            x = x1.reshape(length, 1)
-            y = y1.reshape(length, 1)
-            regr = linear_model.LinearRegression()
-            regr.fit(x1, y1)
-            b = regr.intercept_
-            m = regr.coef_
-            # print(b,"----",m)
-            e = max(e[:18])
-            # ------------------------------------
-            if intermitencia > 2 and e > 28:
-                return ["INTERMITENTE", senal]
-            elif m < -0.017 and e > 28:
-                return ["DETERIORANDOSE", senal]
-            elif est == "G" and senal < 33:
-                return ["BAJA_SEÑAL", senal]
-            elif est == "G" and senal >= 33:
-                return ["OK", senal]
             else:
-                return ["FUSER", senal]
+                est = soup.find_all('tr', class_="full_perf_report")[0].find_all('td')[6].text  # Estado de tX G=Good
+                senal = int(soup.find_all('tr', class_="full_perf_report")[0].find_all('td')[7].text)  # Nivel de Señal dB
 
-    except:
-        return ['DESCONOCIDO', np.nan]  # Si no se encuentra el DCP retorna error
+                # Verificar Intermitencia en transmision
+
+                lista = soup.find_all('tr', class_="full_perf_report")
+                i = 0
+                c = []
+                e = []
+                intermitencia = 0
+                for tr in lista:
+                    a = str(tr.find_all('td')[6].text).replace(' ', '')[0]
+                    if i > 0:
+                        if b == a:
+                            pass
+                        else:
+                            intermitencia = intermitencia + 1
+
+                    b = a
+                    i = i + 1
+                    x = int(tr.find_all('td')[7].text)
+                    if x > 0:
+                        c.append(x)
+                    e.append(x)
+                    # -----------------------------------
+                    # Evaluando si la intensidad de la señal esta decreciendo
+
+                x1 = pd.DataFrame({'x': list(range(0, len(c)))})
+                y1 = pd.DataFrame({'y': c})
+                x1 = x1.values
+                y1 = y1.values
+                s = x1.shape
+                length = s[0]
+                x = x1.reshape(length, 1)
+                y = y1.reshape(length, 1)
+                regr = linear_model.LinearRegression()
+                regr.fit(x1, y1)
+                b = regr.intercept_
+                m = regr.coef_
+                # print(b,"----",m)
+                e = max(e[:18])
+                # ------------------------------------
+                if intermitencia > 2 and e > 28:
+                    return ["INTERMITENTE", senal]
+                elif m < -0.017 and e > 28:
+                    return ["DETERIORANDOSE", senal]
+                elif est == "G" and senal < 33:
+                    return ["BAJA_SEÑAL", senal]
+                elif est == "G" and senal >= 33:
+                    return ["OK", senal]
+                else:
+                    return ["FUSER", senal]
+
+        except:
+            return ['DESCONOCIDO', np.nan]  # Si no se encuentra el DCP retorna error
 
 #--Prueba de la funcion----------------------------
 #para={'DCP_Address':'CB0121EE','a':'CB0121xx'}
@@ -655,8 +657,10 @@ def LevelStatus(df,**kwargs):
         
     else:
         dispo_dato=0
-        x[0] = "FUSER"
-
+        if LAST_DATE == datetime.strptime('1900-01-01 00:00:00', "%Y-%m-%d %H:%M:%S"):
+            x[0] = "DESCONOCIDO"
+        else:
+            x[0] = "FUSER"
     # Evaluacion de Inermitencia-------------------------------------------------------------------------------
 
     if df3.shape[0] > 0:
@@ -878,8 +882,10 @@ def sensorStatus(df,**parametros):
         
     else:
         dispo_dato=0
-        x[0] = "DESCONOCIDO"
-        
+        if LAST_DATE == datetime.strptime('1900-01-01 00:00:00', "%Y-%m-%d %H:%M:%S"):
+            x[0] = "DESCONOCIDO"
+        else:
+            x[0] = "FUSER"
     # Evaluacion de Inermitencia------------------------------------------------------------------------
     
     if df3.shape[0] > 0:

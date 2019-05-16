@@ -53,7 +53,7 @@ df = df[df.TIPO != 'AUS']
 
 a = df.shape
 inicio=0
-fin= 150#a[0]
+fin= a[0]
 df=df.iloc[inicio:fin] #Para particionar el dataframe
 a = df.shape
 

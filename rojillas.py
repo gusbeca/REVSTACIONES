@@ -1,4 +1,4 @@
-from buscarVecinos import veci
+#from buscarVecinos import veci
 #-----------------------Librerias par conexion a BDs--------------------------------------------------------------------
 import psycopg2 #Para conexion a PostGresSQL BD SCADA
 import prestodb #Cliente Presto DB para python para conexion a Repositorio Hydras3 Cassandra pip install presto-python-client
@@ -6,6 +6,7 @@ import mysql.connector
 from mysql.connector import errorcode  #Librerias para conexion a BD mysql para guradar resultados
 import pymysql
 import sqlalchemy
+
 #-----------------------------------------------------------------------------------------------------------------------
 #Librerias de estadistica y matematicas
 import statsmodels.api as sm #require patsy
@@ -28,6 +29,7 @@ import time
 import bibi
 import os
 #-----------------------------------------------------------------------------------------------------------------------
+
 #Conexion a repositorio Cassandra a traves de prestoDB (Datos Hydras3)
 conn=prestodb.dbapi.connect(
     host='172.16.50.20',
@@ -171,7 +173,7 @@ def StateQuery(**kwargs):
         x[1] = datetime.strptime('1900-01-01 00:00:00', "%Y-%m-%d %H:%M:%S")
         x[2] = []
 
-    if x[1] >= datetime.now() - timedelta(1):  # Nuero de dias para considerar una estacion off liene
+    if x[1] >= datetime.now() - timedelta(days=1):  # Nuero de dias para considerar una estacion off liene
         x[3] = 'ON_LINE'
     elif x[0]==-1 and ID_STZ_SCADA != -1:
         x[3] = 'DESCONOCIDO'
@@ -320,7 +322,7 @@ def SensorQuery(estacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, serv
                 df2 = DataFrame()
         else: #Servidor Scada
             try:
-
+                #print(ID_STZ_SCADA, sensorS, days_to_subtract)
                 q = """select id_stz, id_measure, date_record, val_data from data_radio.archive_data 
                               where id_stz = %s and id_measure=%s and
                               val_data IS NOT NULL and
@@ -370,6 +372,7 @@ def BatCheck(df2):
     #print(df2.shape)
     df2['DailyMin'] = df2.event_value.rolling(24, min_periods=14).min()
     BatMin = round(df2.DailyMin.mean(), 1)  # Valor minimo promedio de los ultimos 28 dias
+    #print(BatMin)
     dfa = df2.dropna(axis=0, how='any')
     x1 = dfa.index.values
     y1 = dfa.DailyMin.values
@@ -401,11 +404,10 @@ def BatStatus(CodEstacion, ID_STZ_SCADA, LAST_DATE, servidor):
     sensorS = 8
     days_to_subtract = datetime.now() - LAST_DATE
     days_to_subtract = days_to_subtract.days + ventanaObs
-    #print(days_to_subtract)
-    #try:
+
     df2 = SensorQuery(CodEstacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, servidor)
     qh = df2.shape
-    #print(df2.head())
+    #print(qh)
         
     if qh[0] > 0:
         r = BatCheck(df2)
@@ -417,15 +419,13 @@ def BatStatus(CodEstacion, ID_STZ_SCADA, LAST_DATE, servidor):
             r = BatCheck(df2)
         else:
             r = ["DESCONOCIDO", np.nan]
-    #except:
-    #    r = ["DESCONOCIDO", np.nan]
 
     return r
 
 #-- PRUEBA DE LA FUNCION----
-#date=datetime.now()# - timedelta(5) - timedelta(days=65)
+#date=datetime.now() - timedelta(days=113)
 #print(date)
-#print(BatStatus('0012015110', -1,date,'HYDRAS'))
+#print(BatStatus('0021115180', 104,date,'SCADA'))
 #----------------------------------------------------------------------------------------------------------------------
 #-----REVISION ESTADO DE PLUVIOMETRO----
 def PluvioStatus(df,**kwargs):
@@ -719,6 +719,7 @@ def LevelStatus(df,**kwargs):
 
         # Evaluacion de correlacion con vecino de corriente La idea es que: *Existe una correlacion entre estaciones
         # en una misma corriente y que una variacion repentina de la correlacion es anomala.
+        """
 
         if VECINO_CORREINTE != -1 and s == 0 and datetime.today().weekday() == 6 : #Solo se calcula los sabados para aligerar el computo
 
@@ -770,11 +771,13 @@ def LevelStatus(df,**kwargs):
                         x[2] = round(correla[0], 2)
                     else:
                         x[2] = 999
+            """
                         
     x[0] = x[0] +" DISPO "+"{:.2f}".format(dispo_dato)+"%"
     return x
 
 #--- PREUAB DE LA FUNCION-----
+"""
 def testLevelStatus():
     #Caso1 
     kwargs={}
@@ -798,6 +801,7 @@ def testLevelStatus():
     x=LevelStatus(**kwargs)
     print('caso2 ',x)
 #testLevelStatus()
+"""
 #-----------------------------------------------------------------------------------------------------------------------
 #--FUNCION PARA REVISAR SENSORES EN GENERAL-------------------------------
 def sensorStatus(df,**parametros):
@@ -940,6 +944,8 @@ def sensorStatus(df,**parametros):
                     else:
                         # Evaluacion de correlacion con vecino de corriente La idea es que: *Existe una correlacion entre estaciones
                         # en una misma corriente y que una variacion repentina de la correlacion es anomala.
+                        pass
+                    """
 
                         if vecinah != -1 and D_VECINO < 40 and datetime.today().weekday() == 6 :
 
@@ -987,6 +993,7 @@ def sensorStatus(df,**parametros):
                                         x[2] = round(correla[0], 2)
                                     else:
                                         x[2] = 999
+                    """
             except:
                 pass
     x[0] = x[0] +" DISPO "+"{:.2f}".format(dispo_dato)+"%"

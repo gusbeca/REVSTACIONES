@@ -1,0 +1,22 @@
+
+
+<?php
+require_once 'pdf/lib/dompdf/dompdf_config.inc.php';
+spl_autoload_register('DOMPDF_autoload');
+$dompdf = new DOMPDF();
+$dompdf->load_html( file_get_contents( 'views/home.php' ) );
+$dompdf->set_paper('a4', 'portrait');
+$dompdf->render();
+
+$f;
+$l;
+if(headers_sent($f,$l))
+{
+    echo $f,'<br/>',$l,'<br/>';
+    die('ahora detecta la línea');
+}
+
+$dompdf->stream("prueba.pdf");
+
+
+?>

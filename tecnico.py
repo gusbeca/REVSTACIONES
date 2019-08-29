@@ -69,9 +69,9 @@ def revisarRed(inicio, fin, df):
     q = """select id_stz from data_radio.archive_data 
                limit 1"""
     consulta= bibi.scadaQ(q)
-    #print(consulta[0])
     if consulta[0]== 'OK':
-        for i in range(inicio, fin): 
+        for i in range(inicio, fin):
+            if df.iloc[i]['SINIESTRO'] ==0:
                 # --------------------------------------------------------------------------------------------------------------------
 
                 parametrosE = {'codigo_catalogo': "00" + str(df.iloc[i]['CODIGO_CAT']),
@@ -289,9 +289,12 @@ def revisarRed(inicio, fin, df):
                     df.iloc[i, df.columns.get_loc('Bateria')] = x[1]
                     
             # ---------------------------PUT TIME STAMP--------------------------------------------------------------------
-                df.iloc[i, df.columns.get_loc('FECHA_REVISION')] = datetime.now()
-                if i % 10 == 0:
-                    print(round(i * 100 / (fin-inicio), 0), " %------ tiempo transcurrido: ", (time.time() - start) / 60)
+            else:
+                df.iloc[i, df.columns.get_loc('ON_LINE')] = 'SINIESTRO'
+                
+            df.iloc[i, df.columns.get_loc('FECHA_REVISION')] = datetime.now()
+            if i % 10 == 0:
+                print(round(i * 100 / (fin-inicio), 0), " %------ tiempo transcurrido: ", (time.time() - start) / 60)
   
         df['FECHA_REVISION'] = pd.to_datetime(df.FECHA_REVISION, infer_datetime_format=True)
         df['FECHA_INST'] = pd.to_datetime(df.FECHA_INST, infer_datetime_format=True)

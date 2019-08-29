@@ -90,4 +90,4 @@ def upDateMeasConf():
               HRSueloCorto='%s', HRSueloMedio='%s', HRSueloLargo='%s', RadG='%s', RadV='%s', Evap='%s', PresAtm='%s',\
               VelVi='%s', DirVi='%s', Prcptcn='%s', Nvl='%s' \ WHERE CODIGO_CAT = %s" 
         q = q % tuple(s)
-        print(q)
+        #print(q)

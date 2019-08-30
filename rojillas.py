@@ -85,10 +85,11 @@ def hydrasq(estacion):
 def polarisq(ID_STZ_SCADA):
     
     df2 = DataFrame()
-    q = """select id_stz, id_measure, date_record, val_data from data_radio.archive_data 
+    q = """select id_stz, id_measure, date_record, val_data from data_radio.latest_data 
           where id_stz = %s and val_data IS NOT NULL
-          ORDER BY date_record DESC limit 30""" % ID_STZ_SCADA  # Se limita a 30 pra reducir tiempos
-
+          ORDER BY date_record DESC
+          limit 30""" % ID_STZ_SCADA  # Se limita a 30 pra reducir tiempos
+    #archive_data
     consulta= bibi.scadaQuery(q)
     df2 = consulta[1]
     qs = df2.shape
@@ -99,7 +100,7 @@ def polarisq(ID_STZ_SCADA):
         df2.set_index('event_time')
     else:
         df2 = DataFrame()
-
+    #print(df2.head())
     return df2
 #---TEST DE LA FUNCION------------------------------------------------------
 #df2=polarisq(228)
@@ -107,14 +108,15 @@ def polarisq(ID_STZ_SCADA):
 #print(df2.head())
 #print(df2.sensor.unique())
 #-----------------------------------------------------------------------------------------------------------------------
-#---REVISA EL ESTADO ON-LINE/OFF-LINE DE LA ESTACION PRIMERO EN SCADDA Y SI NO HEN HYDRAS Y SI NO PAILA
+#---REVISA EL ESTADO ON-LINE/OFF-LINE DE LA ESTACION PRIMERO EN HYDRAS SI TIENEN MAS DE 3 HORAS DE RETRASO SE MIRA EN ESCADA Y SE TOMA EL MAS RECIENTE
 def StateQuery(**kwargs):
     estacion = kwargs['codigo_catalogo']
     ID_STZ_SCADA = kwargs['IDSCADA']
    
     pase = 0
     x = [-1, -1, [], 'DESCONOCIDO']
-
+    startE = time.time()
+#1 Prueba en Polaris
     dfp = polarisq(ID_STZ_SCADA)
 
     qp = dfp.shape
@@ -131,6 +133,10 @@ def StateQuery(**kwargs):
         pase = 2
         LAST_DATEh = datetime.strptime('1900-01-01 00:00:00', "%Y-%m-%d %H:%M:%S")
 
+    print('stateQPolaris: ',(time.time()-startE)/60)
+
+    startE = time.time()
+#Si no encontro registros en Polaris o si son mas viejos de un dia, revisa hydras
     if pase != 0:
         dfh = hydrasq(estacion)
         qh = dfh.shape
@@ -149,8 +155,11 @@ def StateQuery(**kwargs):
         elif qp[0]>qh[0] :
             x[0] = 'SCADA'
             df2 = dfp
-    
+    #Se busca la fecha mas reciente
+    print('stateQHydras: ',(time.time()-startE)/60)
+    startE = time.time()
     try:
+        
         if x[0] == 'SCADA':
             x[1] = max(df2['event_time'])
             q = """select distinct id_measure
@@ -172,7 +181,7 @@ def StateQuery(**kwargs):
     except:
         x[1] = datetime.strptime('1900-01-01 00:00:00', "%Y-%m-%d %H:%M:%S")
         x[2] = []
-
+    print('maxDatePolaris: ',(time.time()-startE)/60)
     if x[1] >= datetime.now() - timedelta(days=1):  # Nuero de dias para considerar una estacion off liene
         x[3] = 'ON_LINE'
     elif x[0]==-1 and ID_STZ_SCADA != -1:

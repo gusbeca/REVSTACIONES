@@ -10,6 +10,8 @@ import mysql.connector
 from mysql.connector import errorcode  #Librerias para conexion a BD mysql para guradar resultados
 import sqlalchemy
 import math
+from statistics import mean
+import os
 
 def revisionVariable(var, codigos, i, parametros, df):
     
@@ -70,7 +72,10 @@ def revisarRed(inicio, fin, df):
                limit 1"""
     consulta= bibi.scadaQ(q)
     if consulta[0]== 'OK':
+        print('Prueba conexion BD Scada OK, tomo: ',int(time.time()-start),' minutos')
+        tiempos={}
         for i in range(inicio, fin):
+            
             if df.iloc[i]['SINIESTRO'] ==0:
                 # --------------------------------------------------------------------------------------------------------------------
 
@@ -85,7 +90,7 @@ def revisarRed(inicio, fin, df):
                                'servidor': '', 'mediciones': [], 'LAST_DATE': ''}
 
                 # ---------------------------Verificacion de ESTADO en Servidores----------------------------------------------------
-
+                startE = time.time()
                 x = rojillas.StateQuery(**parametrosE)
                 
                 df.iloc[i, df.columns.get_loc('SERVIDOR')] = x[0]
@@ -97,26 +102,41 @@ def revisarRed(inicio, fin, df):
                 parametrosE['servidor'] = x[0]
                 parametrosE['mediciones'] = x[2]  # Lista con las mediciones de la estacion
                 parametrosE['LAST_DATE'] = x[1]  # Fecha ultimo dato en servidor
+
+                if 'estadoEnServidores' in tiempos:
+                    tiempos['estadoEnServidores'].append((time.time()-startE)/60)
+                else:
+                    tiempos['estadoEnServidores']=[(time.time()-startE)/60]
                 
                 if not (isNaN(x[1])):
                     
                     # --------------------------Verificacion GOES------------------------------------------------------------------------------
-
+                    startE = time.time()
                     if parametrosE['DCP_Address'] != '-1' and parametrosE['DCP_Address'] != '' and parametrosE['DCP_Address'] != ' ':
                         x = rojillas.dcpmon(**parametrosE)
                         df.iloc[i, df.columns.get_loc('NOAA_INMARSAT')] = x[0]
                         df.iloc[i, df.columns.get_loc('GananciaAntena')] = x[1]
+                        if 'verfGoes' in tiempos:
+                            tiempos['verfGoes'].append((time.time()-startE)/60)
+                        else:
+                            tiempos['verfGoes']=[(time.time()-startE)/60]
 
                     # ----------------------------Revision Precipitacion---------------------------------------------------------------------
-
+                    startE = time.time()
                     var = ['CorrelaPrecipitacion', 'Precipitacion', 'EstadoPluvio']
                     codigos = [1, 23, '0234', '0240']
                     revisionVariable(var, codigos, i, parametrosE,df)
+
+                    if 'revPrecipitacion' in tiempos:
+                        tiempos['revPrecipitacion'].append((time.time()-startE)/60)
+                    else:
+                        tiempos['revPrecipitacion']=[(time.time()-startE)/60]
 
                     # ---------------------------Revision Nivel--------------------------------------------------------------------------------
                     # Si es hydrologica tiene que revisar nivel
                     codigos = [7, 229,'0230', '0407','0233']
                     if (df.iloc[i]['CLASE'] == 'HID' or df.iloc[i]['CLASE'] == 'HMT') and (df.iloc[i]['CATEG']== 'LG' or df.iloc[i]['CATEG']== 'LM' or df.iloc[i]['CATEG']== 'MM'):
+                        startE = time.time()
                         if any({*codigos} & {*parametrosE['mediciones']}):
                             pass
                         elif (df.iloc[i]['CATEG']== 'LG' or df.iloc[i]['CATEG']== 'LM'):
@@ -133,11 +153,17 @@ def revisarRed(inicio, fin, df):
                                 parametrosE['mediciones'].append('0407')
                             except:
                                 pass
+                        if 'revNivel' in tiempos:
+                            tiempos['revNivel'].append((time.time()-startE)/60)
+                        else:
+                            tiempos['revNivel']=[(time.time()-startE)/60]
                             
                     var = ['CorrelaNivel', 'Nivel', 'EstadoNivel']
                     
                     revisionVariable(var, codigos, i, parametrosE,df)
 
+                    startE = time.time()
+                    
                     # ---------------------------Revision Temperatura del Aire a 2m---------------------------------------------------------
 
                     var = ['CorrelaTempAire2m', 'TempAire2m', 'EstadoTempAire2m']
@@ -281,12 +307,24 @@ def revisarRed(inicio, fin, df):
                     parametros = dict(parametrosE, **parametrosV)
                     revisionVariable(var, codigos, i, parametros,df)
 
-                    # -------------------------Revision de Bateria------------------------------------------------------------------
+                    if 'revSensores' in tiempos:
+                        tiempos['revSensores'].append((time.time()-startE)/60)
+                    else:
+                        tiempos['revSensores']=[(time.time()-startE)/60]
+                            
+                    var = ['CorrelaNivel', 'Nivel', 'EstadoNivel']
 
+                    # -------------------------Revision de Bateria------------------------------------------------------------------
+                    startE = time.time()
                     x = rojillas.BatStatus(parametrosE['codigo_catalogo'], parametrosE['IDSCADA'], parametrosE['LAST_DATE'],
                                   parametrosE['servidor'])
                     df.iloc[i, df.columns.get_loc('EstBateria')] = x[0]
                     df.iloc[i, df.columns.get_loc('Bateria')] = x[1]
+
+                    if 'revBateria' in tiempos:
+                        tiempos['revBateria'].append((time.time()-startE)/60)
+                    else:
+                        tiempos['revBateria']=[(time.time()-startE)/60]
                     
             # ---------------------------PUT TIME STAMP--------------------------------------------------------------------
             else:
@@ -295,6 +333,22 @@ def revisarRed(inicio, fin, df):
             df.iloc[i, df.columns.get_loc('FECHA_REVISION')] = datetime.now()
             if i % 10 == 0:
                 print(round(i * 100 / (fin-inicio), 0), " %------ tiempo transcurrido: ", (time.time() - start) / 60)
+                if 'estadoEnServidores' in tiempos:
+                    print('t_estado',mean(tiempos['estadoEnServidores']))
+                if 'verfGoes' in tiempos:
+                    print('verfGoes ',mean(tiempos['verfGoes']))
+                if 'revPrecipitacion' in tiempos:
+                    print('revPrecipitacion',mean(tiempos['revPrecipitacion']))
+                if 'revNivel' in tiempos:
+                    print('revNivel',mean(tiempos['revNivel']))
+                if 'revBateria' in tiempos:
+                    print('revBateria',mean(tiempos['revBateria']))
+                    
+                if 'revSensores' in tiempos:
+                    print('revSensores',mean(tiempos['revSensores']))
+                    
+                    
+                    
   
         df['FECHA_REVISION'] = pd.to_datetime(df.FECHA_REVISION, infer_datetime_format=True)
         df['FECHA_INST'] = pd.to_datetime(df.FECHA_INST, infer_datetime_format=True)
@@ -305,10 +359,15 @@ def revisarRed(inicio, fin, df):
         except:
             print('[Estatus0_100] not found in axis')
         #----------------------Guardar  revision en archivo de texto-------------------------------------------------------
-        file_name = 'C:/Python/Python36/RevEstacionesV0.1/estadoRedTes3.csv'
+        path=os.getcwd()
+        file_name = os.path.join(path,'estadoRedTes3.csv')
         df.to_csv(file_name, sep=',', encoding='utf-8')
-        file_name = 'C:/Windows/System32/estadoRedTes3.csv'
-        df.to_csv(file_name, sep=',', encoding='utf-8')
+
+        try:
+            file_name = 'C:/Windows/System32/estadoRedTes3.csv'
+            df.to_csv(file_name, sep=',', encoding='utf-8')
+        except:
+            pass
         #-------------------GUARDAR REVISION EN BD LOCAL MYSQL--------------------------------------------------------------
         df = df.loc[:,~df.columns.duplicated()]
         dfRevisiones=df.iloc[:,25:]
@@ -360,8 +419,9 @@ def revisarRed(inicio, fin, df):
                          LEFT JOIN revision ON estaciones.CODIGO_CAT = revision.CODIGO_CAT
                          WHERE  DATE(revision.FECHA_REVISION) = CURDATE()"""
         dfResumen = pd.read_sql_query(query, engine)
-        file_name = 'C:/Python/Python36/RevEstacionesV0.1/ResumenEstR.csv'
+        file_name = os.path.join(path,'ResumenEstR.csv')
         dfResumen.to_csv(file_name, sep=',', encoding='utf-8')
         
     else:
         print('Error en conexion a BS Scada')
+    tiempos['estadoEnServidores']=mean(tiempos['estadoEnServidores'])

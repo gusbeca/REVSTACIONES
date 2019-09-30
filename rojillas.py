@@ -728,7 +728,6 @@ def LevelStatus(df,**kwargs):
 
         # Evaluacion de correlacion con vecino de corriente La idea es que: *Existe una correlacion entre estaciones
         # en una misma corriente y que una variacion repentina de la correlacion es anomala.
-        """
 
         if VECINO_CORREINTE != -1 and s == 0 and datetime.today().weekday() == 6 : #Solo se calcula los sabados para aligerar el computo
 
@@ -780,7 +779,7 @@ def LevelStatus(df,**kwargs):
                         x[2] = round(correla[0], 2)
                     else:
                         x[2] = 999
-            """
+
                         
     x[0] = x[0] +" DISPO "+"{:.2f}".format(dispo_dato)+"%"
     return x
@@ -951,10 +950,8 @@ def sensorStatus(df,**parametros):
                     if max(df3['DailySum']) < DeltaMin:
                         x[0] = 'DATOS_ANOMALOS_MUY_BAJA_VARIACION'
                     else:
-                        # Evaluacion de correlacion con vecino de corriente La idea es que: *Existe una correlacion entre estaciones
+                        # Evaluacion de correlacion con vecino  La idea es que: *Existe una correlacion entre estaciones
                         # en una misma corriente y que una variacion repentina de la correlacion es anomala.
-                        pass
-                    """
 
                         if vecinah != -1 and D_VECINO < 40 and datetime.today().weekday() == 6 :
 
@@ -1002,7 +999,7 @@ def sensorStatus(df,**parametros):
                                         x[2] = round(correla[0], 2)
                                     else:
                                         x[2] = 999
-                    """
+
             except:
                 pass
     x[0] = x[0] +" DISPO "+"{:.2f}".format(dispo_dato)+"%"

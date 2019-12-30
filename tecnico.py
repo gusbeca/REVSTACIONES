@@ -332,7 +332,7 @@ def revisarRed(inicio, fin, df):
                 
             df.iloc[i, df.columns.get_loc('FECHA_REVISION')] = datetime.now()
             if i % 10 == 0:
-                print(round(i * 100 / (fin-inicio), 0), " %------ tiempo transcurrido: ", (time.time() - start) / 60)
+                print(round(i * 100 / (fin-inicio), 0), " %------ tiempo transcurrido: ", (time.time() - start) / 60,'hora actual: ',time.time())
                 if 'estadoEnServidores' in tiempos:
                     print('t_estado',mean(tiempos['estadoEnServidores']))
                 if 'verfGoes' in tiempos:

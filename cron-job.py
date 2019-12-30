@@ -48,12 +48,12 @@ for i in camposb:
 start = time.time()
 
 df = df[df.TIPO != 'CON']
-df = df[df.TIPO != 'AUS']
+#df = df[df.TIPO != 'AUS']
 #df = df[df.SINIESTRO == 0]
 
 a = df.shape
 inicio=0
-fin= 20#a[0]
+fin= a[0]
 df=df.iloc[inicio:fin] #Para particionar el dataframe
 a = df.shape
 

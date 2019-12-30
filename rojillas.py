@@ -380,26 +380,30 @@ def SensorQuery(estacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, serv
 def BatCheck(df2):
     #print(df2.shape)
     df2['DailyMin'] = df2.event_value.rolling(24, min_periods=14).min()
+    
     BatMin = round(df2.DailyMin.mean(), 1)  # Valor minimo promedio de los ultimos 28 dias
     #print(BatMin)
     dfa = df2.dropna(axis=0, how='any')
     x1 = dfa.index.values
     y1 = dfa.DailyMin.values
+    
     s = x1.shape
     length = s[0]
     #print(length )
     if length >3:
         x = x1.reshape(length, 1)
         y = y1.reshape(length, 1)
+        #print(y)
         regr = linear_model.LinearRegression()
         regr.fit(x, y)
         b = regr.intercept_
-        m = regr.coef_  # Tendiencia mensual de la bateria si pendiente < a -(BatMin-10.9)/4320 => Alarma de descarga
+        m = -regr.coef_  # Tendiencia mensual de la bateria si pendiente < a -(BatMin-10.9)/4320 => Alarma de descarga
+        #print('m ,b',m, ' ',b)
     else:
         m=0
-    if BatMin < 11.9:  # El criterio del humbral se debe ajustar
+    if BatMin < 11.3:  # El criterio del humbral se debe ajustar
         r = ["BATERIA_BAJA", BatMin]
-    elif m < -(BatMin - 10.9) / 4320:
+    elif m < -(12 - 10.5) / 4320 and BatMin < 12.5:#-(BatMin - 10.9) / 4320:
         #print(m,-(BatMin - 10.9) / 4320, BatMin)
         r = ["FALLA:EN_CARGA", BatMin]
     else:
@@ -412,7 +416,7 @@ def BatStatus(CodEstacion, ID_STZ_SCADA, LAST_DATE, servidor):
     sensorH = '9000'
     sensorS = 8
     days_to_subtract = datetime.now() - LAST_DATE
-    days_to_subtract = days_to_subtract.days + ventanaObs
+    days_to_subtract = days_to_subtract.days + 30#ventanaObs
 
     df2 = SensorQuery(CodEstacion, ID_STZ_SCADA, sensorH, sensorS, days_to_subtract, servidor)
     qh = df2.shape
@@ -432,9 +436,9 @@ def BatStatus(CodEstacion, ID_STZ_SCADA, LAST_DATE, servidor):
     return r
 
 #-- PRUEBA DE LA FUNCION----
-#date=datetime.now() - timedelta(days=113)
+#date=datetime.now() - timedelta(days=7)
 #print(date)
-#print(BatStatus('0021115180', 104,date,'SCADA'))
+#print(BatStatus('0013067020', 113,date,'SCADA'))
 #----------------------------------------------------------------------------------------------------------------------
 #-----REVISION ESTADO DE PLUVIOMETRO----
 def PluvioStatus(df,**kwargs):

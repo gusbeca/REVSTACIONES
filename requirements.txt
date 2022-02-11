@@ -22,7 +22,7 @@ numpy==1.16.0
 pandas==0.23.4
 patsy==0.5.1
 presto-python-client==0.5.1
-protobuf==3.6.1
+protobuf==3.15.0
 psycopg2==2.7.7
 pycparser==2.19
 PyGreSQL==5.0.6
